@@ -4,7 +4,9 @@
 package kotlin_io
 
 import kotlin_io.Message
+
 import java.util.*
+
 import kotlin.test.*
 
 
@@ -28,7 +30,7 @@ class MessageTest {
         assertTrue(message.payload.contentEquals(byteArrayOf(0xFF.toByte(), 0x32.toByte(), 0x00.toByte())))
     }
 
-    @Test fun `test message creating using factory method`() {
+    @Test fun `test message creation using factory method`() {
         val inputArray = byteArrayOf(
                 0x00, 0x00, 0x00, 0x05,
                 0x00, 0x00, 0x00, 0x80.toByte(),
@@ -42,5 +44,41 @@ class MessageTest {
         assertEquals(message.senderPort, 8)
         assertEquals(message.receiverPort, 12800)
         assertTrue(message.payload.contentEquals(byteArrayOf(0x01, 0x02, 0x32, 0x32)))
+    }
+
+    @Test fun `test message with too short input byte data`() {
+        val inputArray = byteArrayOf(
+                0x00, 0x21, 0x00, 0x05, 0x00, 0x63, 0x03)
+
+        assertFailsWith<Message.MalformedDataException>() {
+            Message.createFromRawData(inputArray)
+        }
+    }
+
+    @Test fun `test message with input data with no payload`() {
+        val inputArray = byteArrayOf(
+                0x00, 0x00, 0x00, 0x05,
+                0x00, 0x00, 0x00, 0x80.toByte(),
+                0x00, 0x00, 0x00, 0x08,
+                0x00, 0x00, 0x32, 0x00)
+
+        val message = Message.createFromRawData(inputArray)
+        assertEquals(message.msgId, 5)
+        assertEquals(message.msgType, 128)
+        assertEquals(message.senderPort, 8)
+        assertEquals(message.receiverPort, 12800)
+        assertTrue(message.payload.isEmpty())
+    }
+
+    @Test fun `test message with input data one byte too short - size equals minimum size`() {
+        val inputArray = byteArrayOf(
+                0x00, 0x00, 0x00, 0x05,
+                0x00, 0x00, 0x00, 0x20,
+                0x00, 0x00, 0x00, 0x08,
+                0x00, 0x00, 0x32 /*lack of one byte to meet minimum size requirements*/)
+        
+        assertFailsWith<Message.MalformedDataException>() {
+            Message.createFromRawData(inputArray)
+        }
     }
 }
