@@ -8,14 +8,13 @@ import java.io.InputStream
 open class SocketBasedDataChannel(socket: Socket,
     val onDataChannelClosed: () -> Unit = {}) : DataChannel {
 
-    val ownSocket: Socket
-    val outputStream: OutputStream
-    val inputStream: InputStream
+    private val ownSocket: Socket = socket
+    private val outputStream: OutputStream
+    private val inputStream: InputStream
 
     constructor(ipAddress: String, port: Int): this(Socket(ipAddress, port))
 
     init {
-        ownSocket = socket
         outputStream = ownSocket.outputStream
         inputStream = ownSocket.inputStream
     }
@@ -45,7 +44,5 @@ open class SocketBasedDataChannel(socket: Socket,
         inputStream.read(bytesArray)
     }
 
-    override fun isBound(): Boolean {
-        return ownSocket.isConnected()
-    }
+    override fun isBound(): Boolean = ownSocket.isConnected
 }
