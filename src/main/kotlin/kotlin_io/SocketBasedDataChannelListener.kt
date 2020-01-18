@@ -12,24 +12,27 @@ import java.net.ServerSocket
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class SocketBasedDataChannelListener(port: Int) : DataChannelListener, CoroutineScope {
-    override val coroutineContext: CoroutineContext
-        get() = Dispatchers.IO + job
+
+class SocketBasedDataChannelListener(port: Int) : DataChannelListener {
+    class ListenerNotDetachedException : RuntimeException("Old listener has not been detached")
 
     val ownServerSocket: ServerSocket
     var listenerId: Int = Int.MAX_VALUE
-    val listenerToJob: HashMap<Int, Job> = hashMapOf()
+    var worker : Job? = null
  
-    private var job: Job = Job()
-    private val logger: Logger = LoggerFactory.getLogger("SocketBasedDataChannelListener")
+    protected val logger: Logger = LoggerFactory.getLogger("SocketBasedDataChannelListener")
+    protected val scope = CoroutineScope(Job() + Dispatchers.IO)
 
     init {
         ownServerSocket = ServerSocket(port)
-        println(job)
     }
 
-    override fun listen(onDataChannelBound: (dataChannel: DataChannel) -> Unit): Int {
-        val job = launch(coroutineContext) {
+    override fun listen(onDataChannelBound: (dataChannel: DataChannel) -> Unit) {
+        if (worker == null) {
+            throw ListenerNotDetachedException()
+        }
+
+        val job = scope.launch {
             while(true) {
                 logger.info(" started in thread ${Thread.currentThread().name}")
 
@@ -40,17 +43,11 @@ class SocketBasedDataChannelListener(port: Int) : DataChannelListener, Coroutine
             }
         }
 
-        listenerId = onDataChannelBound.hashCode()
-        listenerToJob[listenerId] = job
-        return listenerId
+        worker = job
     }
 
-    override fun detach(listenerFunId: Int) {
-        if (listenerId != listenerFunId) {
-            logger.info(" cannot detach listener id = ${listenerFunId}")
-            return
-        }
-
-        listenerToJob[listenerId]?.cancel()
+    override fun detach() {
+        worker?.cancel()
+        worker = null
     }
 }

@@ -1,15 +1,42 @@
+
 package kotlin_io
 
 
+typealias DataChannelFactory = (ipAddress: String, port: Int) -> DataChannel
+typealias DataChannelListenerFactory = (port: Int) -> DataChannelListener
+
 class SocketBasedMessagesPool(
-        socketBasedDataChannel: SocketBasedDataChannel,
-        socketBasedDataChannelListener: SocketBasedDataChannelListener)
+    val channelFactory: DataChannelFactory,
+    val channelListenerFactory: DataChannelListenerFactory)
     : MessagesPool {
-    override fun send(message: Message) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+
+    val portToListener: MutableMap<Int, DataChannelListener> = hashMapOf()
+
+    override fun send(ipAddress: String, port: Int, message: Message) {
+        channelFactory.invoke(ipAddress, port).use {
+            it.write(Message.toRawData(message))
+        }
     }
 
-    override fun listen(myPort: Int, senderPort: Int, receiver: (message: Message) -> Unit) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun listen(port: Int, receiver: Receiver) {
+        val listener = channelListenerFactory.invoke(port)
+        listener.listen {
+            val channel = it
+            val bytesList = mutableListOf<Byte>()
+            var currentByte: Byte = 0
+
+            channel.whileReadBytes {
+                bytesList.add(currentByte)
+            }
+
+            receiver(Message.fromRawData(bytesList.toByteArray()))
+        }
+
+        portToListener[port] = listener
+    }
+
+    override fun stop(port: Int) {
+        portToListener[port]?.detach()
+        portToListener.remove(port)
     }
 }

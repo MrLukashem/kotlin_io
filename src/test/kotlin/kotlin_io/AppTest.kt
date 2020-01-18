@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream
 import java.io.ByteArrayInputStream
 import java.io.Serializable
 
+
 data class Foo(public val data: Int) : Serializable {
 }
 

@@ -25,7 +25,7 @@ class App {
 
 fun main(args: Array<String>) {
     val listener2 = SocketBasedDataChannelListener(5003)
-    val id = listener2.listen {
+    listener2.listen {
         val i = it.read()
         println("socket attached with code = ${i}")
     }
@@ -37,8 +37,8 @@ fun main(args: Array<String>) {
         it.write(88)
     }
 
-    listener2.detach(id)
-    val id2 = listener2.listen {
+    listener2.detach()
+    listener2.listen {
         val i = it.read()
         println("socket attached with code = ${i}")
     }

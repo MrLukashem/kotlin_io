@@ -5,8 +5,12 @@ import java.net.Socket
 import java.io.OutputStream
 import java.io.InputStream
 
+
 open class SocketBasedDataChannel(socket: Socket,
     val onDataChannelClosed: () -> Unit = {}) : DataChannel {
+
+    public val ipAddress: String
+    public val port: Int
 
     private val ownSocket: Socket = socket
     private val outputStream: OutputStream
@@ -14,7 +18,10 @@ open class SocketBasedDataChannel(socket: Socket,
 
     constructor(ipAddress: String, port: Int): this(Socket(ipAddress, port))
 
+    // TODO: ipAddress should be special type, not a string.
     init {
+        ipAddress = socket.getInetAddress().toString()
+        port = socket.getPort()
         outputStream = ownSocket.outputStream
         inputStream = ownSocket.inputStream
     }
@@ -35,13 +42,13 @@ open class SocketBasedDataChannel(socket: Socket,
         outputStream.write(byte.toInt())
     }
 
-    override fun read(): Byte {
+    override fun read(): Byte? {
         val byteAsInt = inputStream.read()
-        return byteAsInt.toByte()
+        return if (byteAsInt != -1) byteAsInt.toByte() else null
     }
 
-    override fun read(bytesArray: ByteArray) {
-        inputStream.read(bytesArray)
+    override fun read(bytesArray: ByteArray): Int {
+        return inputStream.read(bytesArray)
     }
 
     override fun isBound(): Boolean = ownSocket.isConnected

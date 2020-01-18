@@ -47,8 +47,7 @@ dependencies {
     implementation(group = "org.slf4j", name = "slf4j-simple", version = "1.6.1")
 }
 
-
-application {
+application { 
     // Define the main class for the application.
     mainClassName = "kotlin_io.AppKt"
 }

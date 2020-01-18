@@ -2,7 +2,10 @@
 package kotlin_io
 
 
+typealias Receiver = (message: Message) -> Unit
+
 interface MessagesPool {
-    fun send(message: Message)
-    fun listen(myPort: Int, senderPort: Int, receiver: (message: Message) -> Unit)
+    fun send(ipAddress: String, port: Int, message: Message)
+    fun listen(port: Int, receiver: Receiver)
+    fun stop(port: Int)
 }

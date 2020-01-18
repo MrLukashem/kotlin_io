@@ -4,45 +4,39 @@
 package kotlin_io
 
 import kotlin_io.Message
+import kotlin.test.*
 
 import java.util.*
-
-import kotlin.test.*
 
 
 class MessageTest {
     @Test fun `test simple message values`() {
-        val message = Message(99, 2, 2000, 3400, byteArrayOf())
-        assertEquals(message.msgId, 99)
+        val message = Message.create(2, byteArrayOf())
+        assertEquals(message.msgId, message.hashCode())
         assertEquals(message.msgType, 2)
-        assertEquals(message.senderPort, 2000)
-        assertEquals(message.receiverPort, 3400)
+        assertEquals(message.answerTo, Int.MIN_VALUE)
         assertTrue(message.payload.isEmpty())
     }
 
     @Test fun `test message with custom byte array`() {
-        val message = Message(111, 32, 2042, 3434,
-                byteArrayOf(0xFF.toByte(), 0x32.toByte(), 0x00.toByte()))
-        assertEquals(message.msgId, 111)
+        val message = Message.create(
+                32, byteArrayOf(0xFF.toByte(), 0x32.toByte(), 0x00.toByte()), 2)
+        assertEquals(message.msgId, message.hashCode())
         assertEquals(message.msgType, 32)
-        assertEquals(message.senderPort, 2042)
-        assertEquals(message.receiverPort, 3434)
+        assertEquals(message.answerTo, 2)
         assertTrue(message.payload.contentEquals(byteArrayOf(0xFF.toByte(), 0x32.toByte(), 0x00.toByte())))
     }
 
     @Test fun `test message creation using factory method`() {
         val inputArray = byteArrayOf(
-                0x00, 0x00, 0x00, 0x05,
                 0x00, 0x00, 0x00, 0x80.toByte(),
-                0x00, 0x00, 0x00, 0x08,
-                0x00, 0x00, 0x32, 0x00,
+                0x00, 0x00, 0x00, 0x00,
                 0x01, 0x02, 0x32, 0x32)
-        val message = Message.createFromRawData(inputArray)
+        val message = Message.fromRawData(inputArray)
 
-        assertEquals(message.msgId, 5)
+        assertEquals(message.msgId, message.hashCode())
         assertEquals(message.msgType, 128)
-        assertEquals(message.senderPort, 8)
-        assertEquals(message.receiverPort, 12800)
+        assertEquals(message.answerTo, 0)
         assertTrue(message.payload.contentEquals(byteArrayOf(0x01, 0x02, 0x32, 0x32)))
     }
 
@@ -51,34 +45,29 @@ class MessageTest {
                 0x00, 0x21, 0x00, 0x05, 0x00, 0x63, 0x03)
 
         assertFailsWith<Message.MalformedDataException>() {
-            Message.createFromRawData(inputArray)
+            Message.fromRawData(inputArray)
         }
     }
 
     @Test fun `test message with input data with no payload`() {
         val inputArray = byteArrayOf(
-                0x00, 0x00, 0x00, 0x05,
                 0x00, 0x00, 0x00, 0x80.toByte(),
-                0x00, 0x00, 0x00, 0x08,
-                0x00, 0x00, 0x32, 0x00)
+                0x00, 0x00, 0x00, 0x02)
 
-        val message = Message.createFromRawData(inputArray)
-        assertEquals(message.msgId, 5)
+        val message = Message.fromRawData(inputArray)
+        assertEquals(message.msgId, message.hashCode())
         assertEquals(message.msgType, 128)
-        assertEquals(message.senderPort, 8)
-        assertEquals(message.receiverPort, 12800)
+        assertEquals(message.answerTo, 2)
         assertTrue(message.payload.isEmpty())
     }
 
     @Test fun `test message with input data one byte too short - size equals minimum size`() {
         val inputArray = byteArrayOf(
                 0x00, 0x00, 0x00, 0x05,
-                0x00, 0x00, 0x00, 0x20,
-                0x00, 0x00, 0x00, 0x08,
                 0x00, 0x00, 0x32 /*lack of one byte to meet minimum size requirements*/)
         
         assertFailsWith<Message.MalformedDataException>() {
-            Message.createFromRawData(inputArray)
+            Message.fromRawData(inputArray)
         }
     }
 }
