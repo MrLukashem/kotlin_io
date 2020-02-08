@@ -15,6 +15,8 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.util.Date
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class App {
     val greeting: String
@@ -23,24 +25,59 @@ class App {
         }
 }
 
+fun doSend(pool: MessagesPool) {
+    println("Please provide ip address where send a message")
+    val ip = readLine()
+
+    println("Please provide port address of the receiver")
+    val port = readLine()?.toInt()
+
+    println("Please provide message type")
+    val type = readLine()?.toInt()
+
+    pool.send(ip!!, port!!, Message.create(type!!, byteArrayOf()))
+
+    println("Sending...")
+    println("Done")
+}
+
+fun doListen(pool: MessagesPool) {
+    println("Please provide port address where to listen")
+    val port = readLine()?.toInt()
+
+    pool.listen(port!!) {
+        println("Message received. From port = $port")
+    }
+}
+
+fun doStop(pool: MessagesPool) {
+    val port = readLine()?.toInt()
+
+    pool.stop(port!!)
+}
+
 fun main(args: Array<String>) {
-    val listener2 = SocketBasedDataChannelListener(5003)
-    listener2.listen {
-        val i = it.read()
-        println("socket attached with code = ${i}")
-    }
-    Thread.sleep(5000)
-    
+    val logger: Logger = LoggerFactory.getLogger("SocketBasedDataChannelListener")
 
-    val dataChannel: DataChannel = SocketBasedDataChannel("0.0.0.0", 5003)
-    dataChannel.use {
-        it.write(88)
+    if (args.isEmpty()) {
+        logger.error("No arguments had been provided. Exiting application.")
+        return
     }
 
-    listener2.detach()
-    listener2.listen {
-        val i = it.read()
-        println("socket attached with code = ${i}")
+    val pool = SocketBasedMessagesPool(::SocketBasedDataChannel, ::SocketBasedDataChannelListener)
+
+    while(true) {
+        println("Please provide operation type")
+        println("1: send(ipAddress: String, port: Int, message: Message)")
+        println("2: listen(port: Int, receiver: Receiver)")
+        println("3: stop(port: Int)")
+        println("4: exist the app")
+
+        when(readLine()?.toInt()) {
+            1 -> doSend(pool)
+            2 -> doListen(pool)
+            4 -> doStop(pool)
+            else -> return
+        }
     }
-    Thread.sleep(5000)
 }

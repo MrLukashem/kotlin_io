@@ -52,3 +52,7 @@ application {
     mainClassName = "kotlin_io.AppKt"
 }
 
+tasks.named("run", JavaExec::class).configure {
+    args = mutableListOf("client|server")
+    standardInput = System.`in`
+}

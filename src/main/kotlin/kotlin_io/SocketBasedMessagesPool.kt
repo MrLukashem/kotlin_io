@@ -1,6 +1,12 @@
 
 package kotlin_io
 
+import java.net.InetAddress
+import java.net.ConnectException
+
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 
 typealias DataChannelFactory = (ipAddress: String, port: Int) -> DataChannel
 typealias DataChannelListenerFactory = (port: Int) -> DataChannelListener
@@ -9,12 +15,21 @@ class SocketBasedMessagesPool(
     val channelFactory: DataChannelFactory,
     val channelListenerFactory: DataChannelListenerFactory)
     : MessagesPool {
+    class ConnectionRefused : RuntimeException("Connection has been refused")
 
-    val portToListener: MutableMap<Int, DataChannelListener> = hashMapOf()
+    private val portToListener: MutableMap<Int, DataChannelListener> = hashMapOf()
+
+    protected val logger: Logger = LoggerFactory.getLogger("SocketBasedDataChannel")
 
     override fun send(ipAddress: String, port: Int, message: Message) {
-        channelFactory.invoke(ipAddress, port).use {
-            it.write(Message.toRawData(message))
+        // TODO: Test when connection is refused
+        try {
+            channelFactory.invoke(ipAddress, port).use {
+                it.write(Message.toRawData(message))
+            }
+        } catch(ConnExc: ConnectException) {
+            logger.info("Connection has been refused. Please check connection data")
+            throw ConnectionRefused()
         }
     }
 

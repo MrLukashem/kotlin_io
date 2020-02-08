@@ -28,7 +28,7 @@ class SocketBasedDataChannelListener(port: Int) : DataChannelListener {
     }
 
     override fun listen(onDataChannelBound: (dataChannel: DataChannel) -> Unit) {
-        if (worker == null) {
+        if (worker != null) {
             throw ListenerNotDetachedException()
         }
 
