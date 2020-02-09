@@ -13,19 +13,13 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 
-class SocketBasedDataChannelListener(port: Int) : DataChannelListener {
+class SocketBasedDataChannelListener(val port: Int) : DataChannelListener {
     class ListenerNotDetachedException : RuntimeException("Old listener has not been detached")
 
-    val ownServerSocket: ServerSocket
-    var listenerId: Int = Int.MAX_VALUE
     var worker : Job? = null
  
     protected val logger: Logger = LoggerFactory.getLogger("SocketBasedDataChannelListener")
     protected val scope = CoroutineScope(Job() + Dispatchers.IO)
-
-    init {
-        ownServerSocket = ServerSocket(port)
-    }
 
     override fun listen(onDataChannelBound: (dataChannel: DataChannel) -> Unit) {
         if (worker != null) {
@@ -33,17 +27,28 @@ class SocketBasedDataChannelListener(port: Int) : DataChannelListener {
         }
 
         val job = scope.launch {
-            while(true) {
-                logger.info(" started in thread ${Thread.currentThread().name}")
+            val ownServerSocket = ServerSocket(port)
+
+            while (true) {
+                logger.info("Started in thread ${Thread.currentThread().name}")
+                logger.info("Waiting for the server connection acceptance")
 
                 val channelSocket = ownServerSocket.accept()
                 val dataChannel: DataChannel = SocketBasedDataChannel(channelSocket)
 
+                logger.info("DataChannel created. Calling dataChannelCallbck")
                 onDataChannelBound(dataChannel)
             }
         }
 
         worker = job
+    }
+
+    override suspend fun listenAndFetch(): DataChannel {
+        val ownServerSocket = ServerSocket(port)
+        logger.info("Waiting for the server connection acceptance")
+
+        return SocketBasedDataChannel(ownServerSocket.accept())
     }
 
     override fun detach() {

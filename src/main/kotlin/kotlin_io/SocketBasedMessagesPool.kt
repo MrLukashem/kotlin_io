@@ -21,8 +21,8 @@ class SocketBasedMessagesPool(
 
     protected val logger: Logger = LoggerFactory.getLogger("SocketBasedDataChannel")
 
+    // TODO: specific class shoud be used to keep ip address - not string
     override fun send(ipAddress: String, port: Int, message: Message) {
-        // TODO: Test when connection is refused
         try {
             channelFactory.invoke(ipAddress, port).use {
                 it.write(Message.toRawData(message))
@@ -36,18 +36,28 @@ class SocketBasedMessagesPool(
     override fun listen(port: Int, receiver: Receiver) {
         val listener = channelListenerFactory.invoke(port)
         listener.listen {
-            val channel = it
-            val bytesList = mutableListOf<Byte>()
-            var currentByte: Byte = 0
-
-            channel.whileReadBytes {
-                bytesList.add(currentByte)
-            }
-
-            receiver(Message.fromRawData(bytesList.toByteArray()))
+            receiver(createMessageFromDataChannel(it))
         }
 
         portToListener[port] = listener
+    }
+
+    override suspend fun listenAndFetch(port: Int): Message {
+        val listener = channelListenerFactory.invoke(port)
+        val channel = listener.listenAndFetch()
+
+        return createMessageFromDataChannel(channel)
+    }
+
+    fun createMessageFromDataChannel(channel: DataChannel): Message {
+        val bytesList = mutableListOf<Byte>()
+        var currentByte: Byte = 0
+
+        channel.whileReadBytes {
+            bytesList.add(currentByte)
+        }
+
+        return Message.fromRawData(bytesList.toByteArray())
     }
 
     override fun stop(port: Int) {
